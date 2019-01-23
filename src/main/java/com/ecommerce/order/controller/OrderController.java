@@ -36,7 +36,7 @@ public class OrderController {
 
     @CrossOrigin(origins = "*")
     @RequestMapping(value = "/placeOrder", method = RequestMethod.POST)
-    public ResponseEntity<String> placeOrder( Long userId){
+    public ResponseEntity<String> placeOrder(@RequestParam Long userId){
         Cart cart = cartService.findOne(userId);
         if (cart==null) {
             return new ResponseEntity<String>(Long.toString(cart.getUserId()), HttpStatus.BAD_REQUEST);
