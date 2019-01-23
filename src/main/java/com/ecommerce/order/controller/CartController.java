@@ -19,14 +19,14 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Logger;
-
+@CrossOrigin(origins = "*")
 @RequestMapping("/carts")
 @RestController
 public class CartController {
     @Autowired
     CartService cartService;
     private static final org.slf4j.Logger LOGGER = LoggerFactory.getLogger(CartController.class);
-
+    @CrossOrigin(origins = "*")
     @RequestMapping(value = "/add",method = RequestMethod.POST)
     public void addToCart(@RequestBody AddToCartRequestDTO addToCartRequestDTO){
         Cart cart = new Cart();
@@ -47,13 +47,13 @@ public class CartController {
         cart.setProductList(productList);
         cartService.save(cart);
     }
-
+    @CrossOrigin(origins = "*")
     @RequestMapping(value = "/saveCart", method = RequestMethod.POST)
     public ResponseEntity<String> saveCart(@RequestBody Cart cart){
         Cart cartSaved = cartService.save(cart);
         return new ResponseEntity<String>(Long.toString(cartSaved.getUserId()),HttpStatus.CREATED);
     }
-
+    @CrossOrigin(origins = "*")
     @RequestMapping(value = "/viewCart/{userId}",method = RequestMethod.GET)
     public ResponseEntity<List<ViewCartProductDTO>> viewCart(@PathVariable("userId") Long userId){
         Cart cart = cartService.findOne(userId);

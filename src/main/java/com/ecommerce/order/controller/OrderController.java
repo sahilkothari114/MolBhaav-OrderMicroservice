@@ -11,8 +11,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 import util.Constant;
@@ -36,31 +34,53 @@ public class OrderController {
 
     private static final org.slf4j.Logger LOGGER = LoggerFactory.getLogger(CartController.class);
 
-
+    @CrossOrigin(origins = "*")
     @RequestMapping(value = "/placeOrder", method = RequestMethod.POST)
     public ResponseEntity<String> placeOrder( Long userId){
-        System.out.println(cartService.findOne(userId));
-        Order order = cartToOrder(cartService.findOne(userId));
-        Order order1 = orderService.save(order);
-        if (order1!=null){
-            cartService.delete(userId);
-            RestTemplate restTemplate = new RestTemplate();
-            restTemplate.put(Constant.MERCHANT_MICROSERVICE_BASE_URL+"/productMerchants/reduceQuantity",order1.getProductList());
-
-            try {
-                sendmail(userId,order.getOrderId());
-            }catch (Exception e){
-                e.printStackTrace();
-            }
+        Cart cart = cartService.findOne(userId);
+        if (cart==null) {
+            return new ResponseEntity<String>(Long.toString(cart.getUserId()), HttpStatus.BAD_REQUEST);
         }
-        return new ResponseEntity<>(order1.getOrderId(),HttpStatus.ACCEPTED);
-    }
 
+        Order order = cartToOrder(cart);
+        cartService.delete(userId);
+        List<Product> productList = new ArrayList<>();
+
+
+        RestTemplate restTemplate = new RestTemplate();
+        HttpHeaders headers=new HttpHeaders();
+        headers.set("Content-Type", "application/json");
+        HttpEntity requestEntity=new HttpEntity(order.getProductList(), headers);
+        ResponseEntity<?> entityResponse = restTemplate.exchange(Constant.MERCHANT_MICROSERVICE_BASE_URL+"/productMerchants/reduceQuantity", HttpMethod.POST,requestEntity,List.class);
+        productList = (List)entityResponse.getBody();
+        Iterator iterator = productList.iterator();
+        ObjectMapper objectMapper = new ObjectMapper();
+        List<Product> productList1 = new ArrayList<>();
+        while (iterator.hasNext()){
+            Product product = objectMapper.convertValue(iterator.next(),Product.class);
+            productList1.add(product);
+        }
+
+        //RestTemplate restTemplate = new RestTemplate();
+        //restTemplate.put(Constant.MERCHANT_MICROSERVICE_BASE_URL+"/productMerchants/reduceQuantity",order.getProductList());
+
+        order.setProductList(productList1);
+        Order order1 = orderService.save(order);
+        try {
+            sendMail(userId,order.getOrderId());
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+
+        return new ResponseEntity<>(order1.getOrderId(),HttpStatus.ACCEPTED);
+
+    }
+    @CrossOrigin(origins = "*")
     @RequestMapping(value = "/getOrderHistory/{userId}", method = RequestMethod.GET)
     public List<Order> getOrderHistory(@PathVariable("userId") long userId){
         return orderService.findByUserId(userId);
     }
-
+    @CrossOrigin(origins = "*")
     @RequestMapping(value = "/orderHistory/{userId}",method = RequestMethod.GET)
     public ResponseEntity<List<OrderHistoryDTO>> orderHistory(@PathVariable("userId")Long userId){
         List<Order> orderList = orderService.findByUserId(userId);
@@ -71,8 +91,6 @@ public class OrderController {
             orderHistoryDTO.setPlacedOn(order.getPlacedOn());
             orderHistoryDTO.setUserId(order.getUserId());
             List<ViewCartProductDTO> viewCartProductDTOS = new ArrayList<>();
-
-
 
             if (order == null){
                 return new ResponseEntity<List<OrderHistoryDTO>>(orderHistoryDTOS,HttpStatus.NO_CONTENT);
@@ -134,9 +152,9 @@ public class OrderController {
         return new ResponseEntity<List<OrderHistoryDTO>>(orderHistoryDTOS,HttpStatus.OK);
 
     }
-
-    @RequestMapping(value = "/odersMade", method = RequestMethod.POST)
-    public ResponseEntity<List<MerchantOrders>> odersMade(@RequestBody List<MerchantOrders> merchantOrdersList){
+    @CrossOrigin(origins = "*")
+    @RequestMapping(value = "/ordersMade", method = RequestMethod.POST)
+    public ResponseEntity<List<MerchantOrders>> ordersMade(@RequestBody List<MerchantOrders> merchantOrdersList){
         List<MerchantOrders> merchantOrdersList1 = new ArrayList<>();
         for (MerchantOrders merchantOrders:merchantOrdersList) {
             MerchantOrders merchantOrders1 = new MerchantOrders();
@@ -148,7 +166,7 @@ public class OrderController {
         return new ResponseEntity<List<MerchantOrders>>(merchantOrdersList1,HttpStatus.OK);
     }
 
-    private void sendmail(long userId, String orderId) throws AddressException, MessagingException, IOException {
+    private void sendMail(long userId, String orderId) throws AddressException, MessagingException, IOException {
         RestTemplate restTemplate = new RestTemplate();
         UserDTO userDTO = restTemplate.getForObject(Constant.USER_MICROSERVICE_BASE_URL+"/users/profile/"+userId, UserDTO.class);
 
@@ -609,7 +627,8 @@ public class OrderController {
     }
     private Order cartToOrder(Cart cart){
         Order order = new Order();
-        order.setProductList(cart.getProductList());
+        List<Product> productList = cart.getProductList();
+        order.setProductList(productList);
         order.setUserId(cart.getUserId());
         order.setPlacedOn(LocalDateTime.now());
         return order;
