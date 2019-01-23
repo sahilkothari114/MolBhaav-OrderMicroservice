@@ -20,7 +20,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Logger;
 
-@RequestMapping("/cart")
+@RequestMapping("/carts")
 @RestController
 public class CartController {
     @Autowired
