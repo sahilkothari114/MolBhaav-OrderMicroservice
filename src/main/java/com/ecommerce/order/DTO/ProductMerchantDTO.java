@@ -10,6 +10,15 @@ public class ProductMerchantDTO {
     private int quantity;
     private int rank;
     private double rating;
+    private double ratingCount;
+
+    public double getRatingCount() {
+        return ratingCount;
+    }
+
+    public void setRatingCount(double ratingCount) {
+        this.ratingCount = ratingCount;
+    }
 
     public int getRank() {
         return rank;
