@@ -109,6 +109,7 @@ public class ViewCartProductDTO {
                 ", productDescription='" + productDescription + '\'' +
                 ", Price=" + Price +
                 ", availableQuantity=" + availableQuantity +
+                ", quantity=" + quantity +
                 '}';
     }
 }

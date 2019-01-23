@@ -16,6 +16,7 @@ import org.springframework.web.client.RestTemplate;
 import util.Constant;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Logger;
@@ -66,12 +67,15 @@ public class CartController {
         List<Product> productList = cart.getProductList();
         LOGGER.info("productList"+productList);
         List<ProductMerchantDTO> productMerchantDTOList = new ArrayList<>();
+        HashMap<String,Integer> productQuantity = new HashMap<String, Integer>();
+
         for (Product product:productList) {
             ProductMerchantDTO productMerchantDTO = new ProductMerchantDTO();
             com.ecommerce.merchant.DTO.MerchantDTO merchantDTO = new MerchantDTO();
             merchantDTO.setMerchantId(product.getMerchantId());
             productMerchantDTO.setMerchant(merchantDTO);
             productMerchantDTO.setProductId(product.getProductId());
+            productQuantity.put(product.getProductId()+"-"+product.getMerchantId(),product.getQuantity());
             productMerchantDTOList.add(productMerchantDTO);
         }
         LOGGER.info("productMerchantDTOList:"+productMerchantDTOList);
@@ -92,6 +96,7 @@ public class CartController {
             viewCartProductDTO.setMerchantId(productMerchantDTO.getMerchant().getMerchantId());
             viewCartProductDTO.setAvailableQuantity(productMerchantDTO.getQuantity());
             viewCartProductDTO.setPrice(productMerchantDTO.getPrice());
+            LOGGER.info(Integer.toString(productQuantity.get(viewCartProductDTO.getProductId()+"-"+viewCartProductDTO.getMerchantId())));
             viewCartProductDTOS.add(viewCartProductDTO);
         }
         LOGGER.info(viewCartProductDTOS.toString());
@@ -104,6 +109,7 @@ public class CartController {
         viewCartProductDTOS = new ArrayList<>();
         while (iterator.hasNext()) {
             ViewCartProductDTO viewCartProductDTO1= objectMapper.convertValue(iterator.next(), ViewCartProductDTO.class);
+            viewCartProductDTO1.setQuantity(productQuantity.get(viewCartProductDTO1.getProductId()+"-"+viewCartProductDTO1.getMerchantId()));
 
             viewCartProductDTOS.add(viewCartProductDTO1);
         }
