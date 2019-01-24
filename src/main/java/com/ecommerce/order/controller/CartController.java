@@ -15,10 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 import util.Constant;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 import java.util.logging.Logger;
 @CrossOrigin(origins = "*")
 @RequestMapping("/carts")
@@ -29,7 +26,7 @@ public class CartController {
     private static final org.slf4j.Logger LOGGER = LoggerFactory.getLogger(CartController.class);
     @CrossOrigin(origins = "*")
     @RequestMapping(value = "/add",method = RequestMethod.POST)
-    public void addToCart(@RequestBody AddToCartRequestDTO addToCartRequestDTO){
+    public ResponseEntity<String> addToCart(@RequestBody AddToCartRequestDTO addToCartRequestDTO){
         Cart cart = new Cart();
         cart = cartService.findOne(addToCartRequestDTO.getUserId());
         Product product = new Product();
@@ -46,7 +43,11 @@ public class CartController {
         }
         productList.add(product);
         cart.setProductList(productList);
-        cartService.save(cart);
+        Cart cart1=cartService.save(cart);
+        if (Objects.isNull(cart1)){
+            return new ResponseEntity<String>("Not added to cart!",HttpStatus.BAD_REQUEST);
+        }
+        return new ResponseEntity<String>("Added to cart!",HttpStatus.BAD_REQUEST);
     }
     @CrossOrigin(origins = "*")
     @RequestMapping(value = "/saveCart", method = RequestMethod.POST)
