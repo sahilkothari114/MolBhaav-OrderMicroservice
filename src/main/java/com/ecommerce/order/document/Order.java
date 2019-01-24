@@ -13,7 +13,7 @@ public class Order {
     private String orderId;
     private long userId;
     private LocalDateTime placedOn;
-    private List<Product> productList = new ArrayList<>();
+    private List<OrderProduct> productList = new ArrayList<>();
 
     public Order() {
     }
@@ -42,11 +42,11 @@ public class Order {
         this.placedOn = placedOn;
     }
 
-    public List<Product> getProductList() {
+    public List<OrderProduct> getProductList() {
         return productList;
     }
 
-    public void setProductList(List<Product> productList) {
+    public void setProductList(List<OrderProduct> productList) {
         this.productList = productList;
     }
 }

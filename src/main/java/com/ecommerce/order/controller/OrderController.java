@@ -3,12 +3,14 @@ package com.ecommerce.order.controller;
 import com.ecommerce.order.DTO.*;
 import com.ecommerce.order.document.Cart;
 import com.ecommerce.order.document.Order;
+import com.ecommerce.order.document.OrderProduct;
 import com.ecommerce.order.document.Product;
 import com.ecommerce.order.service.CartService;
 import com.ecommerce.order.service.OrderService;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
@@ -34,123 +36,135 @@ public class OrderController {
 
     private static final org.slf4j.Logger LOGGER = LoggerFactory.getLogger(CartController.class);
 
-    @CrossOrigin(origins = "*")
     @RequestMapping(value = "/placeOrder", method = RequestMethod.POST)
     public ResponseEntity<String> placeOrder( Long userId){
         Cart cart = cartService.findOne(userId);
         if (cart==null) {
-            return new ResponseEntity<String>(Long.toString(cart.getUserId()), HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<String>(Long.toString(cart.getUserId()), HttpStatus.NO_CONTENT);
         }
-
         Order order = cartToOrder(cart);
-        cartService.delete(userId);
-        List<Product> productList = new ArrayList<>();
-
 
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers=new HttpHeaders();
         headers.set("Content-Type", "application/json");
         HttpEntity requestEntity=new HttpEntity(order.getProductList(), headers);
         ResponseEntity<?> entityResponse = restTemplate.exchange(Constant.MERCHANT_MICROSERVICE_BASE_URL+"/productMerchants/reduceQuantity", HttpMethod.POST,requestEntity,List.class);
-        productList = (List)entityResponse.getBody();
+        List<Product> productList = (List)entityResponse.getBody();
         Iterator iterator = productList.iterator();
         ObjectMapper objectMapper = new ObjectMapper();
-        List<Product> productList1 = new ArrayList<>();
+        List<OrderProduct> productList1 = new ArrayList<>();
+        OrderProduct orderProduct  = new OrderProduct();
         while (iterator.hasNext()){
             Product product = objectMapper.convertValue(iterator.next(),Product.class);
-            productList1.add(product);
+            BeanUtils.copyProperties(product,orderProduct);
+            productList1.add(orderProduct);
         }
 
         if(productList1.size()==0){
             return new ResponseEntity<>("Product is out of stock!",HttpStatus.BAD_REQUEST);
         }
+
+        requestEntity=new HttpEntity(productList1, headers);
+        entityResponse = restTemplate.exchange(Constant.PRODUCT_MICROSERVICE_BASE_URL+"/products/getByList", HttpMethod.POST,requestEntity,List.class);
+        productList1= (List)entityResponse.getBody();
+        objectMapper = new ObjectMapper();
+        LOGGER.info(productList1.toString());
+        iterator= productList1.iterator();
+        productList = new ArrayList<>();
+        while (iterator.hasNext()) {
+            Product product= objectMapper.convertValue(iterator.next(), Product.class);
+            //product.setQuantity(productQuantity.get(viewCartProductDTO1.getProductId()+"-"+viewCartProductDTO1.getMerchantId()));
+            productList.add(product);
+        }
+
+
         order.setProductList(productList1);
-        Order order1 = orderService.save(order);
+        order = orderService.save(order);
+        cartService.delete(userId);
         try {
             sendMail(userId,order.getOrderId());
         }catch (Exception e){
             e.printStackTrace();
         }
 
-        return new ResponseEntity<>(order1.getOrderId(),HttpStatus.OK);
+        return new ResponseEntity<>(order.getOrderId(),HttpStatus.OK);
 
     }
-    @CrossOrigin(origins = "*")
     @RequestMapping(value = "/getOrderHistory/{userId}", method = RequestMethod.GET)
     public List<Order> getOrderHistory(@PathVariable("userId") long userId){
         return orderService.findByUserId(userId);
     }
-    @CrossOrigin(origins = "*")
-    @RequestMapping(value = "/orderHistory/{userId}",method = RequestMethod.GET)
-    public ResponseEntity<List<OrderHistoryDTO>> orderHistory(@PathVariable("userId")Long userId){
-        List<Order> orderList = orderService.findByUserId(userId);
-        List<OrderHistoryDTO> orderHistoryDTOS=new ArrayList<>();
-        for (Order order:orderList) {
-            OrderHistoryDTO orderHistoryDTO = new OrderHistoryDTO();
-            orderHistoryDTO.setOrderId(order.getOrderId());
-            orderHistoryDTO.setPlacedOn(order.getPlacedOn());
-            orderHistoryDTO.setUserId(order.getUserId());
-            List<ViewCartProductDTO> viewCartProductDTOS = new ArrayList<>();
+//
+//    @RequestMapping(value = "/orderHistory/{userId}",method = RequestMethod.GET)
+//    public ResponseEntity<List<OrderHistoryDTO>> orderHistory(@PathVariable("userId")Long userId){
+//        List<Order> orderList = orderService.findByUserId(userId);
+//        List<OrderHistoryDTO> orderHistoryDTOS=new ArrayList<>();
+//        for (Order order:orderList) {
+//            OrderHistoryDTO orderHistoryDTO = new OrderHistoryDTO();
+//            orderHistoryDTO.setOrderId(order.getOrderId());
+//            orderHistoryDTO.setPlacedOn(order.getPlacedOn());
+//            orderHistoryDTO.setUserId(order.getUserId());
+//            List<ViewCartProductDTO> viewCartProductDTOS;
+//
+//            if (order == null){
+//                return new ResponseEntity<List<OrderHistoryDTO>>(orderHistoryDTOS,HttpStatus.NO_CONTENT);
+//            }
+//            List<Product> productList = order.getProductList();
+//            LOGGER.info("productList"+productList);
+//            List<ProductMerchantDTO> productMerchantDTOList = new ArrayList<>();
+//            ViewCartProductDTO viewCartProductDTO = new ViewCartProductDTO();
+//            HashMap<String,Integer> productQuantity = new HashMap<String, Integer>();
+//            for (Product product:productList) {
+//                ProductMerchantDTO productMerchantDTO = new ProductMerchantDTO();
+//                com.ecommerce.merchant.DTO.MerchantDTO merchantDTO = new com.ecommerce.merchant.DTO.MerchantDTO();
+//                merchantDTO.setMerchantId(product.getMerchantId());
+//                productMerchantDTO.setMerchant(merchantDTO);
+//                productMerchantDTO.setProductId(product.getProductId());
+//                productMerchantDTOList.add(productMerchantDTO);
+//                productQuantity.put(product.getProductId()+"-"+product.getMerchantId(),product.getQuantity());
+//            }
+//            LOGGER.info("productMerchantDTOList:"+productMerchantDTOList);
+//            RestTemplate restTemplate = new RestTemplate();
+//            HttpHeaders headers=new HttpHeaders();
+//            headers.set("Content-Type", "application/json");
+//            HttpEntity requestEntity=new HttpEntity(productMerchantDTOList, headers);
+//            ResponseEntity<?> entityResponse = restTemplate.exchange(Constant.MERCHANT_MICROSERVICE_BASE_URL+"/productMerchants/getByProductMerchantList", HttpMethod.POST,requestEntity,List.class);
+//            List<ProductMerchantDTO> productMerchantDTOList1 = (List)entityResponse.getBody();
+//            LOGGER.info("productMerchantDTOList1:"+productMerchantDTOList1);
+//            ObjectMapper objectMapper = new ObjectMapper();
+//            Iterator iterator= productMerchantDTOList1.iterator();
+//            viewCartProductDTOS = new ArrayList<>();
+//            while (iterator.hasNext()) {
+//                ProductMerchantDTO productMerchantDTO= objectMapper.convertValue(iterator.next(), ProductMerchantDTO.class);
+//                viewCartProductDTO.setProductId(productMerchantDTO.getProductId());
+//                viewCartProductDTO.setMerchantId(productMerchantDTO.getMerchant().getMerchantId());
+//                viewCartProductDTO.setAvailableQuantity(productMerchantDTO.getQuantity());
+//                viewCartProductDTO.setPrice(productMerchantDTO.getPrice());
+//                viewCartProductDTOS.add(viewCartProductDTO);
+//            }
+//            LOGGER.info(viewCartProductDTOS.toString());
+//
+//            requestEntity=new HttpEntity(viewCartProductDTOS, headers);
+//            entityResponse = restTemplate.exchange(Constant.PRODUCT_MICROSERVICE_BASE_URL+"/products/getByList", HttpMethod.POST,requestEntity,List.class);
+//            List<ViewCartProductDTO> viewCartProductDTOS1= (List)entityResponse.getBody();
+//            objectMapper = new ObjectMapper();
+//            LOGGER.info(viewCartProductDTOS1.toString());
+//            iterator= viewCartProductDTOS1.iterator();
+//            viewCartProductDTOS = new ArrayList<>();
+//            while (iterator.hasNext()) {
+//                ViewCartProductDTO viewCartProductDTO1= objectMapper.convertValue(iterator.next(), ViewCartProductDTO.class);
+//                viewCartProductDTO1.setQuantity(productQuantity.get(viewCartProductDTO1.getProductId()+"-"+viewCartProductDTO1.getMerchantId()));
+//                viewCartProductDTOS.add(viewCartProductDTO1);
+//            }
+//
+//            orderHistoryDTO.setProductList(viewCartProductDTOS);
+//            LOGGER.info(orderHistoryDTO.toString());
+//            orderHistoryDTOS.add(orderHistoryDTO);
+//        }
+//        return new ResponseEntity<List<OrderHistoryDTO>>(orderHistoryDTOS,HttpStatus.OK);
+//
+//    }
 
-            if (order == null){
-                return new ResponseEntity<List<OrderHistoryDTO>>(orderHistoryDTOS,HttpStatus.NO_CONTENT);
-            }
-            List<Product> productList = order.getProductList();
-            LOGGER.info("productList"+productList);
-            List<ProductMerchantDTO> productMerchantDTOList = new ArrayList<>();
-            ViewCartProductDTO viewCartProductDTO = new ViewCartProductDTO();
-            HashMap<String,Integer> productQuantity = new HashMap<String, Integer>();
-            for (Product product:productList) {
-                ProductMerchantDTO productMerchantDTO = new ProductMerchantDTO();
-                com.ecommerce.merchant.DTO.MerchantDTO merchantDTO = new com.ecommerce.merchant.DTO.MerchantDTO();
-                merchantDTO.setMerchantId(product.getMerchantId());
-                productMerchantDTO.setMerchant(merchantDTO);
-                productMerchantDTO.setProductId(product.getProductId());
-                productMerchantDTOList.add(productMerchantDTO);
-                productQuantity.put(product.getProductId()+"-"+product.getMerchantId(),product.getQuantity());
-            }
-            LOGGER.info("productMerchantDTOList:"+productMerchantDTOList);
-            RestTemplate restTemplate = new RestTemplate();
-            HttpHeaders headers=new HttpHeaders();
-            headers.set("Content-Type", "application/json");
-            HttpEntity requestEntity=new HttpEntity(productMerchantDTOList, headers);
-            ResponseEntity<?> entityResponse = restTemplate.exchange(Constant.MERCHANT_MICROSERVICE_BASE_URL+"/productMerchants/getByProductMerchantList", HttpMethod.POST,requestEntity,List.class);
-            List<ProductMerchantDTO> productMerchantDTOList1 = (List)entityResponse.getBody();
-            LOGGER.info("productMerchantDTOList1:"+productMerchantDTOList1);
-            ObjectMapper objectMapper = new ObjectMapper();
-            Iterator iterator= productMerchantDTOList1.iterator();
-            viewCartProductDTOS = new ArrayList<>();
-            while (iterator.hasNext()) {
-                ProductMerchantDTO productMerchantDTO= objectMapper.convertValue(iterator.next(), ProductMerchantDTO.class);
-                viewCartProductDTO.setProductId(productMerchantDTO.getProductId());
-                viewCartProductDTO.setMerchantId(productMerchantDTO.getMerchant().getMerchantId());
-                viewCartProductDTO.setAvailableQuantity(productMerchantDTO.getQuantity());
-                viewCartProductDTO.setPrice(productMerchantDTO.getPrice());
-                viewCartProductDTOS.add(viewCartProductDTO);
-            }
-            LOGGER.info(viewCartProductDTOS.toString());
-
-            requestEntity=new HttpEntity(viewCartProductDTOS, headers);
-            entityResponse = restTemplate.exchange(Constant.PRODUCT_MICROSERVICE_BASE_URL+"/products/getByList", HttpMethod.POST,requestEntity,List.class);
-            List<ViewCartProductDTO> viewCartProductDTOS1= (List)entityResponse.getBody();
-            objectMapper = new ObjectMapper();
-            LOGGER.info(viewCartProductDTOS1.toString());
-            iterator= viewCartProductDTOS1.iterator();
-            viewCartProductDTOS = new ArrayList<>();
-            while (iterator.hasNext()) {
-                ViewCartProductDTO viewCartProductDTO1= objectMapper.convertValue(iterator.next(), ViewCartProductDTO.class);
-                viewCartProductDTO1.setQuantity(productQuantity.get(viewCartProductDTO1.getProductId()+"-"+viewCartProductDTO1.getMerchantId()));
-                viewCartProductDTOS.add(viewCartProductDTO1);
-            }
-
-            orderHistoryDTO.setProductList(viewCartProductDTOS);
-            LOGGER.info(orderHistoryDTO.toString());
-            orderHistoryDTOS.add(orderHistoryDTO);
-        }
-        return new ResponseEntity<List<OrderHistoryDTO>>(orderHistoryDTOS,HttpStatus.OK);
-
-    }
-    @CrossOrigin(origins = "*")
     @RequestMapping(value = "/ordersMade", method = RequestMethod.POST)
     public ResponseEntity<List<MerchantOrders>> ordersMade(@RequestBody List<MerchantOrders> merchantOrdersList){
         List<MerchantOrders> merchantOrdersList1 = new ArrayList<>();
@@ -182,7 +196,7 @@ public class OrderController {
         Message msg = new MimeMessage(session);
         msg.setFrom(new InternetAddress("molbhaav@gmail.com", false));
 
-        msg.setRecipients(Message.RecipientType.TO, InternetAddress.parse("sahilkothari114@gmail.com"));
+        msg.setRecipients(Message.RecipientType.TO, InternetAddress.parse(userDTO.getEmailId()));
         msg.setSubject("Order Placed Successfully!");
 
 
@@ -626,10 +640,17 @@ public class OrderController {
     private Order cartToOrder(Cart cart){
         Order order = new Order();
         List<Product> productList = cart.getProductList();
-        order.setProductList(productList);
+        List<OrderProduct> orderProductList = new ArrayList<>();
+        OrderProduct orderProduct = new OrderProduct();
+        for (Product product: productList) {
+            orderProduct.setProductId(product.getProductId());
+            orderProduct.setMerchantId(product.getMerchantId());
+            orderProduct.setQuantity(product.getQuantity());
+        }
+
+        order.setProductList(orderProductList);
         order.setUserId(cart.getUserId());
         order.setPlacedOn(LocalDateTime.now());
         return order;
     }
-
 }

@@ -27,8 +27,7 @@ public class CartController {
     @CrossOrigin(origins = "*")
     @RequestMapping(value = "/add",method = RequestMethod.POST)
     public ResponseEntity<String> addToCart(@RequestBody AddToCartRequestDTO addToCartRequestDTO){
-        Cart cart = new Cart();
-        cart = cartService.findOne(addToCartRequestDTO.getUserId());
+        Cart cart = cartService.findOne(addToCartRequestDTO.getUserId());
         Product product = new Product();
         product.setMerchantId(addToCartRequestDTO.getMerchantId());
         product.setProductId(addToCartRequestDTO.getProductId());
@@ -53,7 +52,7 @@ public class CartController {
     @RequestMapping(value = "/saveCart", method = RequestMethod.POST)
     public ResponseEntity<String> saveCart(@RequestBody Cart cart){
         Cart cartSaved = cartService.save(cart);
-        return new ResponseEntity<String>(Long.toString(cartSaved.getUserId()),HttpStatus.CREATED);
+        return new ResponseEntity<String>(Long.toString(cartSaved.getUserId()), HttpStatus.CREATED);
     }
     @CrossOrigin(origins = "*")
     @RequestMapping(value = "/viewCart/{userId}",method = RequestMethod.GET)
@@ -89,7 +88,7 @@ public class CartController {
         LOGGER.info("productMerchantDTOList1:"+productMerchantDTOList1);
         ObjectMapper objectMapper = new ObjectMapper();
         Iterator iterator= productMerchantDTOList1.iterator();
-        viewCartProductDTOS = new ArrayList<>();
+        //viewCartProductDTOS = new ArrayList<>();
         while (iterator.hasNext()) {
             ProductMerchantDTO productMerchantDTO= objectMapper.convertValue(iterator.next(), ProductMerchantDTO.class);
             ViewCartProductDTO viewCartProductDTO = new ViewCartProductDTO();
@@ -122,3 +121,8 @@ public class CartController {
     }
 
 }
+
+
+
+
+
