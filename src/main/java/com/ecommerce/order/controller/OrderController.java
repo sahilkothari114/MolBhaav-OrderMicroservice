@@ -61,9 +61,9 @@ public class OrderController {
             productList1.add(product);
         }
 
-        //RestTemplate restTemplate = new RestTemplate();
-        //restTemplate.put(Constant.MERCHANT_MICROSERVICE_BASE_URL+"/productMerchants/reduceQuantity",order.getProductList());
-
+        if(productList1.size()==0){
+            return new ResponseEntity<>("Product is out of stock!",HttpStatus.BAD_REQUEST);
+        }
         order.setProductList(productList1);
         Order order1 = orderService.save(order);
         try {
