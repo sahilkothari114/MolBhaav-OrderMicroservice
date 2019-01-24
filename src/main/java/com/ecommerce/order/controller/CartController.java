@@ -46,7 +46,7 @@ public class CartController {
         if (Objects.isNull(cart1)){
             return new ResponseEntity<String>("Not added to cart!",HttpStatus.BAD_REQUEST);
         }
-        return new ResponseEntity<String>("Added to cart!",HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<String>("Added to cart!",HttpStatus.CREATED);
     }
     @CrossOrigin(origins = "*")
     @RequestMapping(value = "/saveCart", method = RequestMethod.POST)

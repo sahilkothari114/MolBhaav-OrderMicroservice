@@ -49,4 +49,14 @@ public class Order {
     public void setProductList(List<OrderProduct> productList) {
         this.productList = productList;
     }
+
+    @Override
+    public String toString() {
+        return "Order{" +
+                "orderId='" + orderId + '\'' +
+                ", userId=" + userId +
+                ", placedOn=" + placedOn +
+                ", productList=" + productList +
+                '}';
+    }
 }

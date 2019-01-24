@@ -91,4 +91,20 @@ public class OrderProduct{
     public void setQuantity(int quantity) {
         this.quantity = quantity;
     }
+
+    @Override
+    public String toString() {
+        return "OrderProduct{" +
+                "productId='" + productId + '\'' +
+                ", merchantId='" + merchantId + '\'' +
+                ", productName='" + productName + '\'' +
+                ", categoryId='" + categoryId + '\'' +
+                ", productImageUrl='" + productImageUrl + '\'' +
+                ", productUsp='" + productUsp + '\'' +
+                ", productDescription='" + productDescription + '\'' +
+                ", Price=" + Price +
+                ", availableQuantity=" + availableQuantity +
+                ", quantity=" + quantity +
+                '}';
+    }
 }

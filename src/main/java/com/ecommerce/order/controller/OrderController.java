@@ -40,30 +40,30 @@ public class OrderController {
     public ResponseEntity<String> placeOrder( Long userId){
         Cart cart = cartService.findOne(userId);
         if (cart==null) {
-            return new ResponseEntity<String>(Long.toString(cart.getUserId()), HttpStatus.NO_CONTENT);
+            return new ResponseEntity<String>("Cart is empty", HttpStatus.NO_CONTENT);
         }
         Order order = cartToOrder(cart);
-
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers=new HttpHeaders();
         headers.set("Content-Type", "application/json");
         HttpEntity requestEntity=new HttpEntity(order.getProductList(), headers);
         ResponseEntity<?> entityResponse = restTemplate.exchange(Constant.MERCHANT_MICROSERVICE_BASE_URL+"/productMerchants/reduceQuantity", HttpMethod.POST,requestEntity,List.class);
-        List<Product> productList = (List)entityResponse.getBody();
+        List<OrderProduct> productList = (List)entityResponse.getBody();
+        LOGGER.info("productList"+productList);
         Iterator iterator = productList.iterator();
         ObjectMapper objectMapper = new ObjectMapper();
         List<OrderProduct> productList1 = new ArrayList<>();
         OrderProduct orderProduct  = new OrderProduct();
         while (iterator.hasNext()){
-            Product product = objectMapper.convertValue(iterator.next(),Product.class);
-            BeanUtils.copyProperties(product,orderProduct);
-            productList1.add(orderProduct);
+            OrderProduct product = objectMapper.convertValue(iterator.next(),OrderProduct.class);
+            productList1.add(product);
         }
+        LOGGER.info("productList1"+productList1);
 
         if(productList1.size()==0){
             return new ResponseEntity<>("Product is out of stock!",HttpStatus.BAD_REQUEST);
         }
-
+        List<OrderProduct> orderProductList = new ArrayList<>();
         requestEntity=new HttpEntity(productList1, headers);
         entityResponse = restTemplate.exchange(Constant.PRODUCT_MICROSERVICE_BASE_URL+"/products/getByList", HttpMethod.POST,requestEntity,List.class);
         productList1= (List)entityResponse.getBody();
@@ -72,13 +72,12 @@ public class OrderController {
         iterator= productList1.iterator();
         productList = new ArrayList<>();
         while (iterator.hasNext()) {
-            Product product= objectMapper.convertValue(iterator.next(), Product.class);
-            //product.setQuantity(productQuantity.get(viewCartProductDTO1.getProductId()+"-"+viewCartProductDTO1.getMerchantId()));
-            productList.add(product);
+            OrderProduct product= objectMapper.convertValue(iterator.next(), OrderProduct.class);
+            orderProductList.add(product);
         }
 
 
-        order.setProductList(productList1);
+        order.setProductList(orderProductList);
         order = orderService.save(order);
         cartService.delete(userId);
         try {
@@ -646,6 +645,8 @@ public class OrderController {
             orderProduct.setProductId(product.getProductId());
             orderProduct.setMerchantId(product.getMerchantId());
             orderProduct.setQuantity(product.getQuantity());
+            orderProduct.setPrice(product.getPrice());
+            orderProductList.add(orderProduct);
         }
 
         order.setProductList(orderProductList);
