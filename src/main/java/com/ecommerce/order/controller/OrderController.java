@@ -94,13 +94,12 @@ public class OrderController {
 
             if (order == null){
                 return new ResponseEntity<List<OrderHistoryDTO>>(orderHistoryDTOS,HttpStatus.NO_CONTENT);
-
             }
             List<Product> productList = order.getProductList();
             LOGGER.info("productList"+productList);
             List<ProductMerchantDTO> productMerchantDTOList = new ArrayList<>();
             ViewCartProductDTO viewCartProductDTO = new ViewCartProductDTO();
-
+            HashMap<String,Integer> productQuantity = new HashMap<String, Integer>();
             for (Product product:productList) {
                 ProductMerchantDTO productMerchantDTO = new ProductMerchantDTO();
                 com.ecommerce.merchant.DTO.MerchantDTO merchantDTO = new com.ecommerce.merchant.DTO.MerchantDTO();
@@ -108,8 +107,7 @@ public class OrderController {
                 productMerchantDTO.setMerchant(merchantDTO);
                 productMerchantDTO.setProductId(product.getProductId());
                 productMerchantDTOList.add(productMerchantDTO);
-                viewCartProductDTO.setQuantity(product.getQuantity());
-
+                productQuantity.put(product.getProductId()+"-"+product.getMerchantId(),product.getQuantity());
             }
             LOGGER.info("productMerchantDTOList:"+productMerchantDTOList);
             RestTemplate restTemplate = new RestTemplate();
@@ -141,7 +139,7 @@ public class OrderController {
             viewCartProductDTOS = new ArrayList<>();
             while (iterator.hasNext()) {
                 ViewCartProductDTO viewCartProductDTO1= objectMapper.convertValue(iterator.next(), ViewCartProductDTO.class);
-
+                viewCartProductDTO1.setQuantity(productQuantity.get(viewCartProductDTO1.getProductId()+"-"+viewCartProductDTO1.getMerchantId()));
                 viewCartProductDTOS.add(viewCartProductDTO1);
             }
 
