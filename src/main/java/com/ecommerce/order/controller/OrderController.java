@@ -37,7 +37,7 @@ public class OrderController {
     private static final org.slf4j.Logger LOGGER = LoggerFactory.getLogger(CartController.class);
 
     @RequestMapping(value = "/placeOrder", method = RequestMethod.POST)
-    public ResponseEntity<String> placeOrder(@RequestBody Long userId){
+    public ResponseEntity<String> placeOrder( Long userId){
         Cart cart = cartService.findOne(userId);
         if (cart==null) {
             return new ResponseEntity<String>("Cart is empty", HttpStatus.NO_CONTENT);
