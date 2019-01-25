@@ -37,12 +37,14 @@ public class OrderController {
     private static final org.slf4j.Logger LOGGER = LoggerFactory.getLogger(CartController.class);
 
     @RequestMapping(value = "/placeOrder", method = RequestMethod.POST)
-    public ResponseEntity<String> placeOrder( Long userId){
+    public ResponseEntity<Order> placeOrder( Long userId){
         Cart cart = cartService.findOne(userId);
+        Order order = new Order();
         if (cart==null) {
-            return new ResponseEntity<String>("Cart is empty", HttpStatus.NO_CONTENT);
+            return new ResponseEntity<Order>(order, HttpStatus.NO_CONTENT);
         }
-        Order order = cartToOrder(cart);
+        order = cartToOrder(cart);
+        LOGGER.info("cartToOrder:"+order.toString());
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers=new HttpHeaders();
         headers.set("Content-Type", "application/json");
@@ -61,22 +63,20 @@ public class OrderController {
         LOGGER.info("productList1"+productList1);
 
         if(productList1.size()==0){
-            return new ResponseEntity<>("Product is out of stock!",HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>(order,HttpStatus.BAD_REQUEST);
         }
-        List<OrderProduct> orderProductList = new ArrayList<>();
         requestEntity=new HttpEntity(productList1, headers);
         entityResponse = restTemplate.exchange(Constant.PRODUCT_MICROSERVICE_BASE_URL+"/products/getByList", HttpMethod.POST,requestEntity,List.class);
         productList1= (List)entityResponse.getBody();
         objectMapper = new ObjectMapper();
         LOGGER.info(productList1.toString());
         iterator= productList1.iterator();
-        productList = new ArrayList<>();
+        List<OrderProduct> orderProductList = new ArrayList<>();
         while (iterator.hasNext()) {
             OrderProduct product= objectMapper.convertValue(iterator.next(), OrderProduct.class);
             orderProductList.add(product);
         }
-
-
+        LOGGER.info("orderProductList: "+orderProductList.toString());
         order.setProductList(orderProductList);
         order = orderService.save(order);
         cartService.delete(userId);
@@ -86,7 +86,7 @@ public class OrderController {
             e.printStackTrace();
         }
 
-        return new ResponseEntity<>(order.getOrderId(),HttpStatus.OK);
+        return new ResponseEntity<>(order,HttpStatus.OK);
 
     }
     @RequestMapping(value = "/getOrderHistory/{userId}", method = RequestMethod.GET)
@@ -157,8 +157,9 @@ public class OrderController {
         Order order = new Order();
         List<Product> productList = cart.getProductList();
         List<OrderProduct> orderProductList = new ArrayList<>();
-        OrderProduct orderProduct = new OrderProduct();
+        OrderProduct orderProduct;
         for (Product product: productList) {
+            orderProduct = new OrderProduct();
             orderProduct.setProductId(product.getProductId());
             orderProduct.setMerchantId(product.getMerchantId());
             orderProduct.setQuantity(product.getQuantity());
